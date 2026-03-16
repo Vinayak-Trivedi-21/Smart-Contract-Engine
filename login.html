@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | Smart Contract Engine</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <header class="site-header">
+        <nav class="navbar" aria-label="Primary navigation">
+            <a class="brand" href="index.html" aria-label="Contract Engine home">Contract Engine</a>
+            <ul class="nav-links">
+                <li><a href="login.html" aria-current="page">Login</a></li>
+                <li><a href="index.html">Home</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="login-main">
+        <section class="login-section" aria-labelledby="login-title">
+            <h1 id="login-title">Login</h1>
+            <p class="login-subtitle">Sign in to continue.</p>
+
+            <form class="login-form" id="loginForm" novalidate>
+                <div class="form-field">
+                    <label for="username">Username</label>
+                    <input id="username" name="username" type="text" autocomplete="username" required>
+                </div>
+
+                <div class="form-field">
+                    <label for="password">Password</label>
+                    <input id="password" name="password" type="password" autocomplete="current-password" required>
+                </div>
+
+                <button type="submit">Sign In</button>
+            </form>
+
+            <p class="login-message" id="loginMessage" aria-live="polite"></p>
+        </section>
+    </main>
+
+    <script>
+        (function () {
+            const form = document.getElementById("loginForm");
+            const message = document.getElementById("loginMessage");
+
+            form.addEventListener("submit", function (event) {
+                event.preventDefault();
+
+                const username = form.username.value.trim();
+                const password = form.password.value.trim();
+
+                if (username === "admin" && password === "admin") {
+                    message.textContent = "Login successful.";
+                    message.className = "login-message success";
+                    localStorage.setItem("contractEngineUser", username);
+                    setTimeout(function () {
+                        window.location.href = "dashboard.html";
+                    }, 500);
+                } else {
+                    message.textContent = "Invalid credentials.";
+                    message.className = "login-message error";
+                }
+            });
+        })();
+    </script>
+</body>
+
+</html>

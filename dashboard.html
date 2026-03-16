@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | Smart Contract Engine</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <header class="site-header">
+        <nav class="navbar" aria-label="Primary navigation">
+            <a class="brand" href="index.html" aria-label="Contract Engine home">Contract Engine</a>
+            <ul class="nav-links">
+                <li><a href="login.html">Login</a></li>
+                <li><a href="index.html">Home</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero dashboard-hero" aria-label="Dashboard welcome">
+            <h1 class="welcome-user" id="welcomeUser">Welcome admin</h2>
+
+                <div class="dashboard-actions" aria-label="Dashboard options">
+                    <a class="dashboard-action" href="#">Upload Contract</a>
+                    <a class="dashboard-action" href="#">Analyse Contract</a>
+                    <a class="dashboard-action" href="#">Generate Contract</a>
+                    <a class="dashboard-action" href="#">Check Repository</a>
+                </div>
+        </section>
+    </main>
+
+    <script>
+        (function () {
+            const welcome = document.getElementById("welcomeUser");
+            const savedUser = localStorage.getItem("contractEngineUser");
+            const name = savedUser && savedUser.trim() ? savedUser.trim() : "admin";
+            welcome.textContent = "Welcome " + name;
+        })();
+    </script>
+</body>
+
+</html>
