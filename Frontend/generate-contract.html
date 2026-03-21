@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generate New Contract | Smart Contract Engine</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <header class="site-header">
+        <nav class="navbar" aria-label="Primary navigation">
+            <a class="brand" href="index.html" aria-label="Contract Engine home">Contract Engine</a>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="dashboard-main">
+        <section class="dashboard-page" aria-labelledby="generate-title">
+            <a class="back-button" href="dashboard.html" aria-label="Back to dashboard">Back</a>
+            <h1 id="generate-title" class="page-title">Generate New Contract</h1>
+
+            <form class="contract-form" id="contractForm" novalidate>
+                <div class="contract-grid">
+                    <section class="inputs-column" aria-label="Contract inputs">
+                        <div class="field-row">
+                            <label for="nameOne">Name</label>
+                            <input id="nameOne" name="nameOne" type="text" placeholder="Enter value">
+                        </div>
+
+                        <div class="field-row">
+                            <label for="nameTwo">Name</label>
+                            <input id="nameTwo" name="nameTwo" type="text" placeholder="Enter value">
+                        </div>
+
+                        <div class="field-row">
+                            <label for="nameThree">Name</label>
+                            <input id="nameThree" name="nameThree" type="text" placeholder="Enter value">
+                        </div>
+
+                        <div class="field-row">
+                            <label for="nameFour">Name</label>
+                            <input id="nameFour" name="nameFour" type="text" placeholder="Enter value">
+                        </div>
+
+                        <div class="compliance-section" aria-label="Compliance options">
+                            <p class="compliance-title">Choose Compliance Regime</p>
+                            <fieldset class="compliance-list">
+                                <legend class="sr-only">Compliance regime selection</legend>
+
+                                <label><input type="checkbox" name="compliance" value="gdpr"> GDPR</label>
+                                <label><input type="checkbox" name="compliance" value="hipaa"> HIPAA</label>
+                                <label><input type="checkbox" name="compliance" value="iso27001"> ISO 27001</label>
+                                <label><input type="checkbox" name="compliance" value="soc2"> SOC 2</label>
+                            </fieldset>
+                        </div>
+                    </section>
+
+                    <section class="context-column" aria-label="Context input">
+                        <label class="context-label" for="contractContext">Context</label>
+                        <textarea id="contractContext" name="contractContext" rows="15"
+                            placeholder="Enter detailed information about the contract..."></textarea>
+                    </section>
+                </div>
+
+                <div class="action-row">
+                    <button type="submit" class="dashboard-btn">Generate</button>
+                </div>
+
+                <p class="form-note" id="formNote" aria-live="polite"></p>
+            </form>
+        </section>
+    </main>
+
+    <script>
+        (function () {
+            const form = document.getElementById("contractForm");
+            const note = document.getElementById("formNote");
+
+            form.addEventListener("submit", function (event) {
+                event.preventDefault();
+                note.textContent = "Contract generation request captured.";
+            });
+        })();
+    </script>
+</body>
+
+</html>

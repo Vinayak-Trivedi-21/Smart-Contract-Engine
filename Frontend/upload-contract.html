@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Contract | Smart Contract Engine</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <header class="site-header">
+        <nav class="navbar" aria-label="Primary navigation">
+            <a class="brand" href="index.html" aria-label="Contract Engine home">Contract Engine</a>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="dashboard-main">
+        <section class="dashboard-page" aria-labelledby="upload-title">
+            <a class="back-button" href="dashboard.html" aria-label="Back to dashboard">Back</a>
+            <h1 id="upload-title" class="page-title">Upload Contract</h1>
+            <p class="page-intro">Choose a file and upload it directly to the backend.</p>
+
+            <form class="contract-form" id="uploadContractForm" novalidate>
+                <section class="context-column" aria-label="Upload contract file">
+                    <label class="context-label" for="contractFile">Contract file</label>
+                    <div class="upload-panel">
+                        <p>Select the contract document to upload.</p>
+                        <input class="upload-input" id="contractFile" name="contractFile" type="file"
+                            accept=".pdf,.doc,.docx,.txt" required>
+                        <p class="upload-help">Accepted formats: PDF, DOC, DOCX, TXT.</p>
+                        <div class="selected-file-row">
+                            <p class="selected-file" id="selectedFile" aria-live="polite">No file selected.</p>
+                            <button type="button" class="file-clear-btn" id="clearSelectedFile"
+                                aria-label="Clear selected file" hidden>&times;</button>
+                        </div>
+                    </div>
+                </section>
+
+                <div class="action-row">
+                    <button type="submit" class="dashboard-btn">Upload Contract</button>
+                </div>
+
+                <p class="form-note" id="uploadMessage" aria-live="polite"></p>
+            </form>
+        </section>
+    </main>
+
+    <script src="upload-contract.js"></script>
+</body>
+
+</html>
