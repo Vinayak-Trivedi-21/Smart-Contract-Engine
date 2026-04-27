@@ -27,35 +27,51 @@
                 <div class="contract-grid">
                     <section class="inputs-column" aria-label="Contract inputs">
                         <div class="field-row">
-                            <label for="nameOne">Name</label>
-                            <input id="nameOne" name="nameOne" type="text" placeholder="Enter value">
+                            <label for="userId">User ID</label>
+                            <input id="userId" name="userId" type="text" placeholder="Enter user ID" required>
                         </div>
 
                         <div class="field-row">
-                            <label for="nameTwo">Name</label>
-                            <input id="nameTwo" name="nameTwo" type="text" placeholder="Enter value">
+                            <label for="contractName">Name</label>
+                            <input id="contractName" name="contractName" type="text" placeholder="Enter contract name"
+                                required>
                         </div>
 
                         <div class="field-row">
-                            <label for="nameThree">Name</label>
-                            <input id="nameThree" name="nameThree" type="text" placeholder="Enter value">
+                            <label for="partyOne">Party 1</label>
+                            <input id="partyOne" name="partyOne" type="text" placeholder="Enter first party" required>
                         </div>
 
                         <div class="field-row">
-                            <label for="nameFour">Name</label>
-                            <input id="nameFour" name="nameFour" type="text" placeholder="Enter value">
+                            <label for="partyTwo">Party 2</label>
+                            <input id="partyTwo" name="partyTwo" type="text" placeholder="Enter second party" required>
                         </div>
 
-                        <div class="compliance-section" aria-label="Compliance options">
-                            <p class="compliance-title">Choose Compliance Regime</p>
-                            <fieldset class="compliance-list">
-                                <legend class="sr-only">Compliance regime selection</legend>
+                        <div class="field-row">
+                            <label for="contractType">Type of contract</label>
+                            <input id="contractType" name="contractType" type="text"
+                                placeholder="e.g. Service Agreement" required>
+                        </div>
 
-                                <label><input type="checkbox" name="compliance" value="gdpr"> GDPR</label>
-                                <label><input type="checkbox" name="compliance" value="hipaa"> HIPAA</label>
-                                <label><input type="checkbox" name="compliance" value="iso27001"> ISO 27001</label>
-                                <label><input type="checkbox" name="compliance" value="soc2"> SOC 2</label>
-                            </fieldset>
+                        <div class="field-row">
+                            <label for="complianceRegime">Compliance regime</label>
+                            <select id="complianceRegime" name="complianceRegime" required>
+                                <option value="" selected disabled>Select a compliance regime</option>
+                                <option value="GDPR">GDPR</option>
+                                <option value="HIPAA">HIPAA</option>
+                                <option value="ISO 27001">ISO 27001</option>
+                                <option value="SOC 2">SOC 2</option>
+                            </select>
+                        </div>
+
+                        <div class="field-row">
+                            <label for="generationModel">Generation model (optional)</label>
+                            <select id="generationModel" name="generationModel">
+                                <option value="" selected>Use backend default model</option>
+                                <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+                                <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                                <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite</option>
+                            </select>
                         </div>
                     </section>
 
@@ -79,10 +95,80 @@
         (function () {
             const form = document.getElementById("contractForm");
             const note = document.getElementById("formNote");
+            const webhookUrl = "http://localhost:5678/webhook/generate-contract";
 
-            form.addEventListener("submit", function (event) {
+            function getFilenameFromResponse(response, fallbackName) {
+                const contentDisposition = response.headers.get("content-disposition") || "";
+                const match = contentDisposition.match(/filename\*=UTF-8''([^;]+)|filename="?([^\";]+)"?/i);
+                const rawName = match && (match[1] || match[2]);
+
+                if (rawName) {
+                    try {
+                        return decodeURIComponent(rawName);
+                    } catch (_) {
+                        return rawName;
+                    }
+                }
+
+                return fallbackName;
+            }
+
+            async function downloadResponseFile(response, fallbackName) {
+                const blob = await response.blob();
+                const fileUrl = window.URL.createObjectURL(blob);
+                const anchor = document.createElement("a");
+                anchor.href = fileUrl;
+                anchor.download = getFilenameFromResponse(response, fallbackName);
+                document.body.appendChild(anchor);
+                anchor.click();
+                anchor.remove();
+                window.URL.revokeObjectURL(fileUrl);
+            }
+
+            form.addEventListener("submit", async function (event) {
                 event.preventDefault();
-                note.textContent = "Contract generation request captured.";
+
+                const payload = {
+                    user_id: document.getElementById("userId").value.trim(),
+                    name: document.getElementById("contractName").value.trim(),
+                    party1: document.getElementById("partyOne").value.trim(),
+                    party2: document.getElementById("partyTwo").value.trim(),
+                    contract_type: document.getElementById("contractType").value.trim(),
+                    compliance_regime: document.getElementById("complianceRegime").value,
+                    context: document.getElementById("contractContext").value.trim()
+                };
+                const selectedModel = document.getElementById("generationModel").value.trim();
+
+                if (selectedModel) {
+                    payload.model = selectedModel;
+                }
+
+                if (!payload.user_id || !payload.name || !payload.party1 || !payload.party2 || !payload.contract_type || !payload.compliance_regime) {
+                    note.textContent = "Please fill in User ID, Name, Party 1, Party 2, Type of contract, and Compliance regime.";
+                    return;
+                }
+
+                note.textContent = selectedModel
+                    ? `Sending contract request to n8n using model ${selectedModel}...`
+                    : "Sending contract request to n8n...";
+
+                try {
+                    const response = await fetch(webhookUrl, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(errorText || "Contract request failed.");
+                    }
+
+                    await downloadResponseFile(response, `${payload.name.replace(/\s+/g, "_") || "contract"}.pdf`);
+                    note.textContent = "Contract generated and downloaded.";
+                } catch (error) {
+                    note.textContent = error.message || "Unable to download the generated contract.";
+                }
             });
         })();
     </script>

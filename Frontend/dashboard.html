@@ -31,6 +31,34 @@
         </section>
     </main>
 
+    <section class="chatbot-widget" aria-label="Document query chatbot">
+        <button type="button" class="chatbot-toggle" id="chatbotToggle" aria-label="Open chatbot"
+            aria-controls="chatbotPanel" aria-expanded="false">
+            <span aria-hidden="true">Chat</span>
+        </button>
+
+        <div class="chatbot-panel" id="chatbotPanel" hidden>
+            <header class="chatbot-header">
+                <h2>Document Assistant</h2>
+                <button type="button" class="chatbot-close" id="chatbotClose"
+                    aria-label="Close chatbot">&times;</button>
+            </header>
+
+            <div class="chatbot-messages" id="chatbotMessages" aria-live="polite">
+                <p class="chatbot-message bot">Ask me questions about your stored documents. I can now answer using
+                    Gemini.
+                </p>
+            </div>
+
+            <form class="chatbot-form" id="chatbotForm">
+                <label class="sr-only" for="chatbotInput">Ask a question about stored documents</label>
+                <input id="chatbotInput" type="text" placeholder="Ask about clauses, dates, parties..."
+                    autocomplete="off" required>
+                <button type="submit">Send</button>
+            </form>
+        </div>
+    </section>
+
     <script>
         (function () {
             const welcome = document.getElementById("welcomeUser");
@@ -39,6 +67,7 @@
             welcome.textContent = "Welcome " + name;
         })();
     </script>
+    <script src="chatbot-ui.js"></script>
 </body>
 
 </html>

@@ -27,62 +27,235 @@
             <section class="analyse-section" aria-label="Choose contract to analyse">
                 <div class="section-head-row">
                     <h2 class="page-title">Choose Contract</h2>
-                    <div class="search-group">
-                        <label for="contractSearch" class="sr-only">Search contracts</label>
-                        <input type="text" id="contractSearch" placeholder="Search your contracts..."
-                            class="search-input" aria-label="Search contracts">
+                    <div class="search-group contract-select-group">
+                        <label for="contractSelect" class="sr-only">Select a contract to review</label>
+                        <select id="contractSelect" class="contract-select" aria-label="Select a contract to review"
+                            disabled>
+                            <option value="">Loading contracts...</option>
+                        </select>
                     </div>
                 </div>
 
                 <div class="contract-upload-placeholder" role="region" aria-label="Contract selection area">
-                    <p>Select or upload a contract to analyse</p>
+                    <p id="contractSelectionHint">Select a contract from your Cloud SQL contracts list to send it to the
+                        review workflow.</p>
                 </div>
             </section>
 
             <!-- Options Section -->
             <section class="analyse-options" aria-label="Analysis options">
-                <h2 class="page-title">Options</h2>
+                <h2 class="page-title">Review mode</h2>
 
-                <fieldset class="analysis-options-list">
-                    <legend class="sr-only">Select analysis types to perform on your contract</legend>
+                <div class="analysis-options-list analysis-options-single">
+                    <div class="analysis-option analysis-option-primary"
+                        aria-label="Risk and clause recommendation selected">
+                        <div class="option-badge" aria-hidden="true">Selected</div>
+                        <div class="checkbox-label">
+                            <span class="option-title">Risk &amp; Clause Recommendation</span>
+                            <span class="option-description">Runs the single active review service for the selected
+                                contract.</span>
+                        </div>
+                    </div>
 
-                    <label class="analysis-option">
-                        <input type="checkbox" id="benchmarking" name="analysis-type" value="benchmarking"
-                            aria-label="Benchmarking and Clause Recommendation">
-                        <span class="checkbox-label">
-                            <span class="option-title">Benchmarking & Clause Recommendation</span>
-                            <span class="option-description">Get insights based on industry benchmarks and receive
-                                personalized clause recommendations</span>
-                        </span>
-                    </label>
-
-                    <label class="analysis-option">
-                        <input type="checkbox" id="compliance" name="analysis-type" value="compliance"
-                            aria-label="Compliance Check">
-                        <span class="checkbox-label">
-                            <span class="option-title">Compliance Check</span>
-                            <span class="option-description">Verify your contract against regulatory requirements and
-                                compliance standards</span>
-                        </span>
-                    </label>
-
-                    <label class="analysis-option">
-                        <input type="checkbox" id="risk" name="analysis-type" value="risk" aria-label="Risk Analysis">
-                        <span class="checkbox-label">
-                            <span class="option-title">Risk Analysis</span>
-                            <span class="option-description">Identify and assess potential risks and liabilities within
-                                your contract</span>
-                        </span>
-                    </label>
-                </fieldset>
+                    <div class="analysis-option analysis-option-disabled" aria-disabled="true">
+                        <div class="option-badge option-badge-disabled" aria-hidden="true">Unavailable</div>
+                        <div class="checkbox-label">
+                            <span class="option-title">Compliance Review</span>
+                            <span class="option-description">Greyed out for now. The review flow uses the risk and
+                                clause
+                                recommendation service only.</span>
+                        </div>
+                    </div>
+                </div>
             </section>
 
             <!-- Action Button -->
             <div class="action-row">
-                <button class="dashboard-btn" aria-label="Start contract analysis">Analyse</button>
+                <button class="dashboard-btn" id="analyseButton" aria-label="Start contract review">Analyse</button>
             </div>
+
+            <p class="form-note" id="reviewNote" aria-live="polite"></p>
         </div>
     </main>
+
+    <script>
+        (function () {
+            const API_BASE_URL = (window.CONTRACT_API_BASE_URL || "http://localhost:8001").replace(/\/$/, "");
+            const CONTRACT_LIST_ENDPOINT = API_BASE_URL + "/contracts/search?limit=200";
+            const REVIEW_WEBHOOK_URL = window.CONTRACT_REVIEW_WEBHOOK_URL || "http://localhost:5678/webhook-test/contract-review-start";
+
+            const contractSelect = document.getElementById("contractSelect");
+            const analyseButton = document.getElementById("analyseButton");
+            const reviewNote = document.getElementById("reviewNote");
+            const contractSelectionHint = document.getElementById("contractSelectionHint");
+
+            function setNote(message) {
+                reviewNote.textContent = message || "";
+            }
+
+            function setLoadingState(isLoading) {
+                contractSelect.disabled = isLoading;
+                analyseButton.disabled = isLoading;
+                analyseButton.textContent = isLoading ? "Loading..." : "Analyse";
+            }
+
+            function getCurrentUserRole() {
+                const savedUser = localStorage.getItem("contractEngineUser");
+                const trimmed = savedUser && savedUser.trim();
+                return trimmed || "admin";
+            }
+
+            function getPreselectedContractId() {
+                const contractId = localStorage.getItem("contractEngineSelectedReviewContractId");
+                if (!contractId) {
+                    return "";
+                }
+
+                localStorage.removeItem("contractEngineSelectedReviewContractId");
+                return contractId.trim();
+            }
+
+            function formatContractLabel(item) {
+                const filename = (item && (item.filename || item.title)) ? (item.filename || item.title) : "Untitled Contract";
+                const contractType = item && (item.contract_type || item.contractType) ? (item.contract_type || item.contractType).trim() : "";
+                const parts = [filename];
+                if (contractType) {
+                    parts.push(contractType);
+                }
+                return parts.join(" • ");
+            }
+
+            function populateContracts(items) {
+                contractSelect.innerHTML = "";
+
+                if (!Array.isArray(items) || items.length === 0) {
+                    const emptyOption = document.createElement("option");
+                    emptyOption.value = "";
+                    emptyOption.textContent = "No contracts found";
+                    contractSelect.appendChild(emptyOption);
+                    contractSelect.disabled = true;
+                    analyseButton.disabled = true;
+                    contractSelectionHint.textContent = "No contracts were returned from the database.";
+                    return;
+                }
+
+                const placeholderOption = document.createElement("option");
+                placeholderOption.value = "";
+                placeholderOption.textContent = "Select a contract";
+                placeholderOption.disabled = true;
+                placeholderOption.selected = true;
+                contractSelect.appendChild(placeholderOption);
+
+                items.forEach(function (item) {
+                    const contractId = item && (item.contract_id || item.id);
+                    if (!contractId) {
+                        return;
+                    }
+
+                    const option = document.createElement("option");
+                    option.value = contractId;
+                    option.textContent = formatContractLabel(item);
+                    contractSelect.appendChild(option);
+                });
+
+                const preselectedContractId = getPreselectedContractId();
+                if (preselectedContractId) {
+                    const matchingOption = Array.from(contractSelect.options).find(function (option) {
+                        return option.value === preselectedContractId;
+                    });
+
+                    if (matchingOption) {
+                        contractSelect.value = preselectedContractId;
+                    }
+                }
+
+                contractSelect.disabled = false;
+                analyseButton.disabled = false;
+                contractSelectionHint.textContent = "Choose one contract and submit it to the review workflow.";
+            }
+
+            async function loadContracts() {
+                setLoadingState(true);
+
+                try {
+                    const response = await fetch(CONTRACT_LIST_ENDPOINT, { headers: { "Accept": "application/json" } });
+
+                    if (!response.ok) {
+                        let message = "Unable to load contracts.";
+                        try {
+                            const data = await response.json();
+                            if (data && data.detail) {
+                                message = data.detail;
+                            }
+                        } catch (_) {
+                            // Keep the default message when the body is not JSON.
+                        }
+                        throw new Error(message);
+                    }
+
+                    const data = await response.json();
+                    populateContracts(data && data.items);
+                    setNote("");
+                } catch (error) {
+                    contractSelect.innerHTML = "<option value=''>Unable to load contracts</option>";
+                    contractSelect.disabled = true;
+                    analyseButton.disabled = true;
+                    contractSelectionHint.textContent = error.message || "Unable to load contracts from the backend.";
+                    setNote(error.message || "Unable to load contracts from the backend.");
+                } finally {
+                    analyseButton.textContent = "Analyse";
+                }
+            }
+
+            analyseButton.addEventListener("click", async function () {
+                const contractId = contractSelect.value.trim();
+                if (!contractId) {
+                    setNote("Select a contract before starting the review.");
+                    return;
+                }
+
+                const payload = {
+                    contract_id: contractId,
+                    user_role: getCurrentUserRole(),
+                    review_depth: "standard"
+                };
+
+                analyseButton.disabled = true;
+                analyseButton.textContent = "Sending...";
+                setNote("Sending the selected contract to n8n...");
+
+                try {
+                    const response = await fetch(REVIEW_WEBHOOK_URL, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        let message = "Contract review request failed.";
+                        try {
+                            const data = await response.json();
+                            if (data && data.detail) {
+                                message = data.detail;
+                            }
+                        } catch (_) {
+                            // Keep the default message when the response body is not JSON.
+                        }
+                        throw new Error(message);
+                    }
+
+                    setNote("Review request sent successfully.");
+                } catch (error) {
+                    setNote(error.message || "Unable to send the contract review request.");
+                } finally {
+                    analyseButton.disabled = false;
+                    analyseButton.textContent = "Analyse";
+                }
+            });
+
+            loadContracts();
+        })();
+    </script>
 
 </body>
 

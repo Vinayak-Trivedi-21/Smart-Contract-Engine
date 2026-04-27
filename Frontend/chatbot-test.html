@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot Test | Smart Contract Engine</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <header class="site-header">
+        <nav class="navbar" aria-label="Primary navigation">
+            <a class="brand" href="index.html" aria-label="Contract Engine home">Contract Engine</a>
+            <ul class="nav-links">
+                <li><a href="dashboard.html">Dashboard</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="dashboard-main">
+        <section class="dashboard-page" aria-labelledby="chatbot-test-title">
+            <h1 id="chatbot-test-title" class="page-title">Chatbot Independent Test</h1>
+            <p class="page-intro">This page only tests the chatbot endpoint. AWS upload/download services are not
+                required.</p>
+
+            <div class="chatbot-panel" style="position: static; width: min(100%, 760px); max-height: none;">
+                <header class="chatbot-header">
+                    <h2>Document Assistant</h2>
+                </header>
+
+                <div class="chatbot-messages" id="chatbotMessages" aria-live="polite"
+                    style="height: clamp(260px, 40vh, 440px);">
+                    <p class="chatbot-message bot">Ask a question to verify Gemini + backend wiring.</p>
+                </div>
+
+                <form class="chatbot-form" id="chatbotForm">
+                    <label class="sr-only" for="chatbotInput">Ask a chatbot question</label>
+                    <input id="chatbotInput" type="text" placeholder="Ask a contract question..." autocomplete="off"
+                        required>
+                    <button type="submit">Send</button>
+                </form>
+                <p class="form-note" id="chatbotStatus" aria-live="polite"></p>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        (function () {
+            const API_BASE_URL = window.CONTRACT_API_BASE_URL || "http://localhost:8001";
+            const CHATBOT_ENDPOINT = API_BASE_URL.replace(/\/$/, "") + "/chatbot/query";
+
+            const form = document.getElementById("chatbotForm");
+            const input = document.getElementById("chatbotInput");
+            const messages = document.getElementById("chatbotMessages");
+            const status = document.getElementById("chatbotStatus");
+
+            function appendMessage(text, role) {
+                const bubble = document.createElement("p");
+                bubble.className = "chatbot-message " + role;
+                bubble.textContent = text;
+                messages.appendChild(bubble);
+                messages.scrollTop = messages.scrollHeight;
+                return bubble;
+            }
+
+            function appendReferences(referenceItems) {
+                if (!Array.isArray(referenceItems) || referenceItems.length === 0) {
+                    return;
+                }
+
+                const references = document.createElement("p");
+                references.className = "chatbot-message bot";
+                references.textContent = "Sources: " + referenceItems.join(" | ");
+                messages.appendChild(references);
+                messages.scrollTop = messages.scrollHeight;
+            }
+
+            form.addEventListener("submit", async function (event) {
+                event.preventDefault();
+
+                const question = input.value.trim();
+                if (!question) {
+                    return;
+                }
+
+                status.textContent = "";
+                appendMessage(question, "user");
+                input.value = "";
+                input.disabled = true;
+
+                const pending = appendMessage("Thinking...", "bot");
+
+                try {
+                    const response = await fetch(CHATBOT_ENDPOINT, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({ question: question })
+                    });
+
+                    if (!response.ok) {
+                        let message = "Chat request failed.";
+                        try {
+                            const data = await response.json();
+                            if (data && data.detail) {
+                                message = data.detail;
+                            }
+                        } catch (_) {
+                            // Keep default message if body is not JSON.
+                        }
+                        throw new Error(message);
+                    }
+
+                    const data = await response.json();
+                    pending.remove();
+                    appendMessage((data && data.answer) || "No response from assistant.", "bot");
+                    appendReferences(data && data.references);
+                } catch (error) {
+                    pending.remove();
+                    appendMessage(error.message || "Unable to reach chatbot backend.", "bot");
+                    status.textContent = "Tip: Ensure backend is running on " + API_BASE_URL + ".";
+                } finally {
+                    input.disabled = false;
+                    input.focus();
+                }
+            });
+        })();
+    </script>
+</body>
+
+</html>

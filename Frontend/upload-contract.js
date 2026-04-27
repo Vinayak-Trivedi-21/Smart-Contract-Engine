@@ -1,15 +1,33 @@
 (function () {
-    const API_BASE_URL = window.CONTRACT_API_BASE_URL || "http://localhost:8001";
-    const API_ENDPOINT = API_BASE_URL.replace(/\/$/, "") + "/contractUpload";
+    const WEBHOOK_ENDPOINT =
+        window.CONTRACT_INGEST_WEBHOOK_URL || "http://localhost:5678/webhook/ingest-contract";
 
     const form = document.getElementById("uploadContractForm");
     const fileInput = document.getElementById("contractFile");
+    const userIdInput = document.getElementById("userId");
     const selectedFile = document.getElementById("selectedFile");
     const clearSelectedFile = document.getElementById("clearSelectedFile");
     const uploadMessage = document.getElementById("uploadMessage");
+    const submitButton = form && form.querySelector('button[type="submit"]');
 
-    if (!form || !fileInput || !selectedFile || !clearSelectedFile || !uploadMessage) {
+    if (!form || !fileInput || !userIdInput || !selectedFile || !clearSelectedFile || !uploadMessage || !submitButton) {
         return;
+    }
+
+    function setUploadMessage(message, isError) {
+        uploadMessage.textContent = message;
+        uploadMessage.style.color = isError ? "#b42318" : "#156d2b";
+    }
+
+    function toBase64(file) {
+        return new Promise(function (resolve, reject) {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = function () {
+                resolve(reader.result || "");
+            };
+            reader.onerror = reject;
+        });
     }
 
     function updateSelectedFileUI() {
@@ -24,7 +42,7 @@
 
     clearSelectedFile.addEventListener("click", function () {
         fileInput.value = "";
-        uploadMessage.textContent = "File selection cleared.";
+        setUploadMessage("File selection cleared.", false);
         updateSelectedFileUI();
     });
 
@@ -32,42 +50,65 @@
         event.preventDefault();
 
         const file = fileInput.files && fileInput.files[0];
-        if (!file) {
-            uploadMessage.textContent = "Choose a file before uploading.";
+        const userId = userIdInput.value.trim();
+
+        if (!userId) {
+            setUploadMessage("Enter a user ID before uploading.", true);
             return;
         }
 
-        const formData = new FormData();
-        formData.append("contractFile", file);
+        if (!file) {
+            setUploadMessage("Choose a file before uploading.", true);
+            return;
+        }
 
-        uploadMessage.textContent = "Uploading contract...";
+        setUploadMessage("Uploading contract...", false);
+        submitButton.disabled = true;
 
         try {
-            const response = await fetch(API_ENDPOINT, {
+            const fileAsBase64 = await toBase64(file);
+            const payload = {
+                user_id: userId,
+                filename: file.name,
+                file: String(fileAsBase64).split(",")[1] || "",
+            };
+
+            const response = await fetch(WEBHOOK_ENDPOINT, {
                 method: "POST",
-                body: formData,
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(payload),
             });
 
-            let payload = null;
+            const rawText = await response.text();
+            let responseData = null;
             try {
-                payload = await response.json();
+                responseData = rawText ? JSON.parse(rawText) : null;
             } catch (error) {
-                payload = null;
+                responseData = null;
             }
 
             if (!response.ok) {
-                const serverMessage = payload && (payload.detail || payload.message);
-                uploadMessage.textContent = serverMessage || "Upload failed. Please try again.";
+                const serverMessage = responseData && (responseData.detail || responseData.message);
+                setUploadMessage(serverMessage || "Upload failed. Please try again.", true);
                 return;
             }
 
-            const successMessage = (payload && payload.message) || "Contract uploaded successfully.";
-            const objectPath = payload && payload.objectPath;
-            uploadMessage.textContent = objectPath ? successMessage + " Stored at " + objectPath : successMessage;
+            if (responseData && responseData.status === "uploaded") {
+                setUploadMessage("Contract uploaded successfully.", false);
+            } else if (responseData && responseData.status) {
+                setUploadMessage("Upload completed with status: " + responseData.status, false);
+            } else {
+                setUploadMessage("Upload completed.", false);
+            }
+
             form.reset();
             updateSelectedFileUI();
         } catch (error) {
-            uploadMessage.textContent = "Could not connect to backend at /contractUpload.";
+            setUploadMessage("Could not reach the upload webhook. Check if n8n is running.", true);
+        } finally {
+            submitButton.disabled = false;
         }
     });
 

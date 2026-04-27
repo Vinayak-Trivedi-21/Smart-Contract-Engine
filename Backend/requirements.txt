@@ -1,5 +1,10 @@
-fastapi==0.116.1
-uvicorn[standard]==0.35.0
-google-cloud-storage==3.1.0
-python-multipart==0.0.20
-python-dotenv==1.1.1
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+google-genai>=1.0.0
+reportlab>=4.2.0
+python-dotenv>=1.0.1
+boto3>=1.35.0
+SQLAlchemy>=2.0.35
+psycopg2-binary>=2.9.9
+python-multipart>=0.0.9
+pypdf>=4.3.1

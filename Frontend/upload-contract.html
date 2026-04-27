@@ -22,16 +22,23 @@
         <section class="dashboard-page" aria-labelledby="upload-title">
             <a class="back-button" href="dashboard.html" aria-label="Back to dashboard">Back</a>
             <h1 id="upload-title" class="page-title">Upload Contract</h1>
-            <p class="page-intro">Choose a file and upload it directly to the backend.</p>
+            <p class="page-intro">Upload a contract file with your user ID.</p>
 
             <form class="contract-form" id="uploadContractForm" novalidate>
+                <section class="inputs-column" aria-label="Upload details">
+                    <div class="field-row">
+                        <label for="userId">User ID</label>
+                        <input id="userId" name="userId" type="text" placeholder="Enter your user ID" required>
+                    </div>
+                </section>
+
                 <section class="context-column" aria-label="Upload contract file">
                     <label class="context-label" for="contractFile">Contract file</label>
                     <div class="upload-panel">
                         <p>Select the contract document to upload.</p>
                         <input class="upload-input" id="contractFile" name="contractFile" type="file"
-                            accept=".pdf,.doc,.docx,.txt" required>
-                        <p class="upload-help">Accepted formats: PDF, DOC, DOCX, TXT.</p>
+                            accept="application/pdf" required>
+                        <p class="upload-help">Accepted format: PDF.</p>
                         <div class="selected-file-row">
                             <p class="selected-file" id="selectedFile" aria-live="polite">No file selected.</p>
                             <button type="button" class="file-clear-btn" id="clearSelectedFile"

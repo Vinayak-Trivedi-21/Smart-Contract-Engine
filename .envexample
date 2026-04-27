@@ -1,0 +1,56 @@
+# Smart Contract Engine - environment example for standalone contract review service
+# Copy this to .env in Smart-Contract-Engine or Backend/.env and fill values.
+
+# Required for production-like setup.
+# Use a SQLAlchemy URL format supported by your DB driver.
+# For your Cloud SQL setup (public IP), this is the format:
+# DATABASE_URL=postgresql+psycopg2://DB_USER:DB_PASSWORD@34.173.161.114:5432/DB_NAME
+DATABASE_URL=
+
+# Optional. If true and DATABASE_URL is missing/unreachable, service uses local sqlite.
+# Recommended false when you want to force Cloud SQL.
+DB_FALLBACK_ENABLED=false
+
+# Optional local fallback (used only when DB_FALLBACK_ENABLED=true).
+LOCAL_FALLBACK_DATABASE_URL=sqlite:///./local_dev.db
+
+# Optional service port for contract_review_service.py
+CONTRACT_REVIEW_SERVICE_PORT=8001
+
+# ---------- Your current Cloud SQL metadata ----------
+# Project: project-cf8c42fd-853d-4920-aae
+# Region: us-central1
+# Instance ID: free-trial-first-project
+# Connection name: project-cf8c42fd-853d-4920-aae:us-central1:free-trial-first-project
+# Engine: PostgreSQL 18
+# Public IP: 34.173.161.114
+# Port: 5432
+
+# Fill these with actual database credentials.
+DB_NAME=
+DB_USER=
+DB_PASSWORD=
+DB_HOST=34.173.161.114
+DB_PORT=5432
+
+# Then construct DATABASE_URL from these values.
+# Example:
+# DATABASE_URL=postgresql+psycopg2://postgres:your_password@34.173.161.114:5432/your_db_name
+
+# ---------- If you use Cloud SQL Auth Proxy instead ----------
+# Start proxy separately, then use localhost in DATABASE_URL.
+# DATABASE_URL=postgresql+psycopg2://DB_USER:DB_PASSWORD@127.0.0.1:5432/DB_NAME
+
+# ---------- If you are using GCP IAM DB authentication ----------
+# You still need:
+# 1) Instance connection name
+# 2) Database name
+# 3) IAM database user mapping
+# 4) A connection method (Auth Proxy, connector library, or private IP/VPC)
+# Then build DATABASE_URL according to that method.
+
+# Helpful project metadata
+GCP_PROJECT=project-cf8c42fd-853d-4920-aae
+GCP_LOCATION=us-central1
+CLOUD_SQL_INSTANCE=free-trial-first-project
+CLOUD_SQL_CONNECTION_NAME=project-cf8c42fd-853d-4920-aae:us-central1:free-trial-first-project

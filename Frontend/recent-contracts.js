@@ -1,60 +1,25 @@
 (function () {
     const API_BASE_URL = window.CONTRACT_API_BASE_URL || "http://localhost:8001";
-    const CONTRACTS_ENDPOINT = API_BASE_URL.replace(/\/$/, "") + "/contracts";
-    const openedStorageKey = "contractEngineRecentlyOpened";
-    const MAX_RECENT_OPENED = 5;
+    const SEARCH_ENDPOINT = API_BASE_URL.replace(/\/$/, "") + "/contracts/search";
 
     const searchInput = document.getElementById("searchContracts");
     const contractsList = document.getElementById("contractsList");
     const emptyState = document.getElementById("emptyState");
     let searchTimer = null;
-    let allContractsCache = [];
 
     if (!searchInput || !contractsList || !emptyState) {
         return;
     }
 
-    function readOpenedHistory() {
-        try {
-            const saved = localStorage.getItem(openedStorageKey);
-            const parsed = saved ? JSON.parse(saved) : [];
-            return Array.isArray(parsed) ? parsed : [];
-        } catch (error) {
-            return [];
-        }
-    }
-
-    function writeOpenedHistory(history) {
-        localStorage.setItem(openedStorageKey, JSON.stringify(history));
-    }
-
-    function rememberOpened(contract) {
-        const history = readOpenedHistory().filter(function (item) {
-            return item && item.id !== contract.id;
-        });
-
-        history.unshift({
-            id: contract.id,
-            fileName: contract.fileName,
-            objectPath: contract.objectPath,
-            openUrl: contract.openUrl,
-            openedAt: new Date().toISOString(),
-            updatedAt: contract.updatedAt
-        });
-
-        writeOpenedHistory(history.slice(0, 50));
-    }
-
     async function fetchContracts(queryText, limit) {
         const params = new URLSearchParams();
-        params.set("limit", String(limit || 500));
-        params.set("offset", "0");
+        params.set("limit", String(limit || 50));
 
         if (queryText && queryText.trim()) {
-            params.set("q", queryText.trim());
+            params.set("title", queryText.trim());
         }
 
-        const response = await fetch(CONTRACTS_ENDPOINT + "?" + params.toString(), {
+        const response = await fetch(SEARCH_ENDPOINT + "?" + params.toString(), {
             method: "GET"
         });
 
@@ -96,43 +61,52 @@
         });
     }
 
-    function createCard(contract, showOpenedAt) {
+    function normalizeContract(contract) {
+        return {
+            id: contract && (contract.id || contract.contract_id) ? String(contract.id || contract.contract_id) : "",
+            title: contract && (contract.title || contract.filename) ? String(contract.title || contract.filename) : "Contract",
+            contractType: contract && (contract.contractType || contract.contract_type) ? String(contract.contractType || contract.contract_type) : "Other",
+            createdAt: contract ? (contract.createdAt || contract.created_at) : "",
+            status: contract && contract.status ? String(contract.status) : ""
+        };
+    }
+
+    function createCard(contract) {
         const article = document.createElement("article");
         article.className = "contract-card";
 
-        const updatedLabel = formatDate(contract.updatedAt);
-        const openedAtLabel = showOpenedAt ? formatDate(contract.openedAt) : null;
-        const openAction = contract.openUrl
-            ? "<a class=\"dashboard-btn\" target=\"_blank\" rel=\"noopener noreferrer\" data-action=\"open-contract\" href=\"" + escapeHtml(contract.openUrl) + "\">Open Contract</a>"
-            : "<button class=\"dashboard-btn\" type=\"button\" disabled>Open unavailable</button>";
-
-        const openedMarkup = openedAtLabel
-            ? "<li><strong>Opened:</strong> " + escapeHtml(openedAtLabel) + "</li>"
-            : "";
+        const item = normalizeContract(contract);
+        const createdLabel = formatDate(item.createdAt);
+        const statusLabel = item.status || "Not set";
 
         article.innerHTML = [
             "<div class=\"contract-card-header\">",
             "<div>",
-            "<h2>" + escapeHtml(contract.fileName || "Contract") + "</h2>",
-            "<p class=\"contract-meta\">" + escapeHtml(contract.objectPath || "") + "</p>",
+            "<h2>" + escapeHtml(item.title) + "</h2>",
+            "<p class=\"contract-meta\">" + escapeHtml(item.contractType) + "</p>",
             "</div>",
-            "<p class=\"contract-meta\">Updated " + escapeHtml(updatedLabel) + "</p>",
+            "<p class=\"contract-meta\">Created " + escapeHtml(createdLabel) + "</p>",
             "</div>",
             "<ul class=\"contract-details\">",
-            "<li><strong>File:</strong> " + escapeHtml(contract.fileName) + "</li>",
-            "<li><strong>Object Path:</strong> " + escapeHtml(contract.objectPath) + "</li>",
-            "<li><strong>Record ID:</strong> " + escapeHtml(contract.id) + "</li>",
-            openedMarkup,
+            "<li><strong>Title:</strong> " + escapeHtml(item.title) + "</li>",
+            "<li><strong>Type:</strong> " + escapeHtml(item.contractType) + "</li>",
+            "<li><strong>Status:</strong> " + escapeHtml(statusLabel) + "</li>",
+            "<li><strong>Contract ID:</strong> " + escapeHtml(item.id) + "</li>",
             "</ul>",
             "<div class=\"action-row\">",
-            openAction,
+            "<button class=\"dashboard-btn\" type=\"button\" data-action=\"use-for-review\">Use for Review</button>",
             "</div>"
         ].join("");
 
-        const openLink = article.querySelector("[data-action='open-contract']");
-        if (openLink) {
-            openLink.addEventListener("click", function () {
-                rememberOpened(contract);
+        const reviewButton = article.querySelector("[data-action='use-for-review']");
+        if (reviewButton) {
+            reviewButton.addEventListener("click", function () {
+                if (!item.id) {
+                    return;
+                }
+
+                localStorage.setItem("contractEngineSelectedReviewContractId", item.id);
+                window.location.href = "analyse-contract.html";
             });
         }
 
@@ -145,7 +119,7 @@
         emptyState.querySelector("p").textContent = message;
     }
 
-    function renderContracts(contracts, showOpenedAt) {
+    function renderContracts(contracts) {
         contractsList.innerHTML = "";
 
         if (!contracts.length) {
@@ -154,85 +128,33 @@
         }
 
         contracts.forEach(function (contract) {
-            contractsList.appendChild(createCard(contract, showOpenedAt));
+            contractsList.appendChild(createCard(contract));
         });
 
         contractsList.hidden = false;
         emptyState.hidden = true;
     }
 
-    function renderRecentOpenedFromCache() {
-        const openedHistory = readOpenedHistory();
-        if (!openedHistory.length) {
-            renderEmptyState("No opened contracts yet. Search and open a contract to populate this view.");
-            return;
-        }
-
-        const contractsById = {};
-        allContractsCache.forEach(function (contract) {
-            contractsById[contract.id] = contract;
-        });
-
-        const recentContracts = openedHistory.slice(0, MAX_RECENT_OPENED).map(function (opened) {
-            const liveContract = contractsById[opened.id];
-            if (liveContract) {
-                return {
-                    id: liveContract.id,
-                    fileName: liveContract.fileName,
-                    objectPath: liveContract.objectPath,
-                    openUrl: liveContract.openUrl || opened.openUrl,
-                    updatedAt: liveContract.updatedAt,
-                    openedAt: opened.openedAt
-                };
-            }
-
-            return {
-                id: opened.id,
-                fileName: opened.fileName,
-                objectPath: opened.objectPath,
-                openUrl: opened.openUrl,
-                updatedAt: opened.updatedAt,
-                openedAt: opened.openedAt
-            };
-        });
-
-        renderContracts(recentContracts, true);
-    }
-
-    async function refreshRecentOpenedView() {
+    async function loadContracts(searchText) {
         try {
-            allContractsCache = await fetchContracts("", 1000);
-            renderRecentOpenedFromCache();
-        } catch (error) {
-            renderEmptyState(error.message || "Could not load contracts from backend.");
-        }
-    }
-
-    async function runSearch(searchText) {
-        if (!searchText.trim()) {
-            renderRecentOpenedFromCache();
-            return;
-        }
-
-        try {
-            const matches = await fetchContracts(searchText, 200);
+            const matches = await fetchContracts(searchText, 100);
             if (!matches.length) {
-                renderEmptyState("No contracts match that search.");
+                renderEmptyState("No contracts found.");
                 return;
             }
 
-            renderContracts(matches, false);
+            renderContracts(matches);
         } catch (error) {
-            renderEmptyState(error.message || "Search failed. Please try again.");
+            renderEmptyState(error.message || "Could not load contracts from backend.");
         }
     }
 
     searchInput.addEventListener("input", function () {
         window.clearTimeout(searchTimer);
         searchTimer = window.setTimeout(function () {
-            runSearch(searchInput.value);
+            loadContracts(searchInput.value.trim());
         }, 250);
     });
 
-    refreshRecentOpenedView();
+    loadContracts("");
 })();
